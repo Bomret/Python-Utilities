@@ -6,7 +6,7 @@ Created on 27.09.2011
 
 import os
 from fnmatch import fnmatch
-from logging import warning, info
+from logging import warning, info, critical
 from shutil import move
 from PIL import Image
 from PIL.ExifTags import TAGS
@@ -24,7 +24,7 @@ class CodeCounter(object):
         '''
         self._files = dict()
     
-    def count_code(self, workdir, extensions):
+    def count_code(self, extensions, workdir, recursive):
         '''
         
         '''
@@ -32,22 +32,44 @@ class CodeCounter(object):
         if not os.path.exists(workdir):
             raise IOError
         
-        for root, dirs, filenames in os.walk(workdir):
-            for file in filenames:
-                path = os.path.join(root, file)
+        if recursive:
+            for root, dirs, filenames in os.walk(workdir):
+                for file in filenames:
+                    path = os.path.join(root, file)
+                
+                    for ext in extensions:
+                        self.__count(path, file, ext)
+                        
+        else:
+            for file in os.listdir(workdir):
+                path = os.path.join(workdir, file)
                 
                 for ext in extensions:
-                    if fnmatch(file, '*.' + ext):
-                        handle = open(path, 'r')
-                        length = len(handle.readlines())
-                        self._files[str(file)] = length
-                        handle.close()
+                    self.__count(path, file, ext)    
                         
         return self._files
+    
+    def __count(self, path, file, ext):
+        '''
+        
+        '''
+        if fnmatch(file, '*.' + ext):
+            try: 
+                with open(path, 'r') as handle:
+                    length = 0
+                    for line in handle: 
+                        length += 1
+                    self._files[str(file)] = length
+            except Exception as errstr:
+                warning(errstr)
+                         
+#--------------------------------------------------------------------
 
 class FileLister(object):
     '''
-    
+    This class offers capabilities to list files in various ways. At the
+    moment it only offers to list all files with the specified
+    extension in the specified directory in a text file of the given name.
     '''
     
     def find_files(self, txtname, directory, extension):
@@ -65,6 +87,8 @@ class FileLister(object):
         for file in extfiles:
             handle.write(file + '\n')
             handle.close()
+
+#--------------------------------------------------------------------
             
 class PicSorter(object):
     '''
@@ -148,7 +172,9 @@ class PicSorter(object):
                     os.rmdir(os.path.join(root, subdir))
                 except:
                     pass
-                
+
+#--------------------------------------------------------------------
+
 class ImageConverter(object):
     '''
     This class is used to convert all images within a given folder to a new
@@ -172,6 +198,8 @@ class ImageConverter(object):
                     Image.open(infile).save(outfile)
                 except IOError:
                     warning("Cannot convert ", infile)
+
+#--------------------------------------------------------------------
 
 class TextIndexer(object):
     
